@@ -35,7 +35,7 @@ func TestLexingSingleCharacters(t *testing.T) {
 	lexer := New(input)
 
 	for i, test := range tests {
-		tok := <-lexer.tokens
+		tok := <-lexer.Tokens
 
 		if tok.Type != test.typ {
 			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, test.typ, tok.Type)
@@ -62,7 +62,7 @@ func TestLexingVariables(t *testing.T) {
 	lexer := New(input)
 
 	for i, test := range tests {
-		tok := <-lexer.tokens
+		tok := <-lexer.Tokens
 
 		if tok.Type != test.typ {
 			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, test.typ, tok.Type)
@@ -75,7 +75,8 @@ func TestLexingVariables(t *testing.T) {
 }
 
 func TestLexingEdgeCases(t *testing.T) {
-	input := `!-/*5;
+	input := `
+!-/*5;
 5 < 10 > 5;
 
 10 == 10;
@@ -110,7 +111,7 @@ func TestLexingEdgeCases(t *testing.T) {
 	lexer := New(input)
 
 	for i, test := range tests {
-		tok := <-lexer.tokens
+		tok := <-lexer.Tokens
 
 		if tok.Type != test.typ {
 			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, test.typ, tok.Type)
@@ -123,7 +124,8 @@ func TestLexingEdgeCases(t *testing.T) {
 }
 
 func TestLexingBasicCode(t *testing.T) {
-	input := `let five = 5;
+	input := `
+let five = 5;
 let ten = 10;
 
 let add = fn(x, y) {
@@ -203,7 +205,7 @@ if (5 < 10) {
 	lexer := New(input)
 
 	for i, test := range tests {
-		tok := <-lexer.tokens
+		tok := <-lexer.Tokens
 
 		if tok.Type != test.typ {
 			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, test.typ, tok.Type)

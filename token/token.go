@@ -1,39 +1,46 @@
 package token
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type Type string
 
+// Keywords
+const (
+	ELSE     = "else"
+	FALSE    = "false"
+	FUNCTION = "fn"
+	IF       = "if"
+	LET      = "let"
+	RETURN   = "return"
+	TRUE     = "true"
+)
+
+// Operators
 const (
 	ASSIGN    = "="
 	ASTERISK  = "*"
 	BANG      = "!"
 	COMMA     = ","
-	ELSE      = "ELSE"
-	EOF       = "\uFFFF"
 	EQUAL     = "=="
-	FALSE     = "FALSE"
-	FUNCTION  = "FUNCTION"
 	GT        = ">"
-	IDENT     = "IDENT"
-	IF        = "IF"
-	ILLEGAL   = "ILLEGAL"
-	INT       = "INT"
 	LBRACE    = "{"
-	LET       = "LET"
 	LPAREN    = "("
 	LT        = "<"
 	MINUS     = "-"
 	NOT_EQUAL = "!="
 	PLUS      = "+"
 	RBRACE    = "}"
-	RETURN    = "RETURN"
 	RPAREN    = ")"
-	SEMICOLON = ";"
 	SLASH     = "/"
-	TRUE      = "TRUE"
+)
+
+// Other
+const (
+	EOF       = "\uFFFF"
+	IDENT     = "identifier"
+	ILLEGAL   = "illegal"
+	INT       = "int"
+	SEMICOLON = ";"
 )
 
 type Token struct {
@@ -41,21 +48,26 @@ type Token struct {
 	Literal string
 }
 
+// IsType checks if this token is of a particular type.
+func (t Token) IsType(other Type) bool {
+	return t.Type == other
+}
+
 func (t Token) String() string {
-	return fmt.Sprintf("%-8s = %q", t.Type, t.Literal)
+	return fmt.Sprintf("%-10s = %q", t.Type, t.Literal)
 }
 
 var keywords = map[string]Type{
-	"fn":     FUNCTION,
-	"let":    LET,
-	"true":   TRUE,
-	"false":  FALSE,
-	"if":     IF,
-	"else":   ELSE,
-	"return": RETURN,
+	FUNCTION: FUNCTION,
+	LET:      LET,
+	TRUE:     TRUE,
+	FALSE:    FALSE,
+	IF:       IF,
+	ELSE:     ELSE,
+	RETURN:   RETURN,
 }
 
-func Lookup(ident string) Type {
+func LookupType(ident string) Type {
 	if tok, ok := keywords[ident]; ok {
 		return tok
 	}

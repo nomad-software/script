@@ -25,10 +25,10 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
-		tokens := lexer.New(line)
+		lexer := lexer.New(line)
 
-		for token := range tokens {
-			fmt.Fprintf(out, "%s\n", token)
+		for tok := range lexer.Tokens {
+			fmt.Fprintf(out, "%s\n", tok)
 		}
 	}
 }

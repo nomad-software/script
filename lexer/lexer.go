@@ -14,13 +14,13 @@ const (
 )
 
 // New creates a new instance of the lexer channel.
-func New(input string) chan token.Token {
+func New(input string) *Lexer {
 	l := &Lexer{
 		input:  input,
-		tokens: make(chan token.Token),
+		Tokens: make(chan token.Token),
 	}
 	go l.run()
-	return l.tokens
+	return l
 }
 
 // Lexer is the instance of the lexer.
@@ -29,7 +29,7 @@ type Lexer struct {
 	start  int              // Start position of this item.
 	pos    int              // Current position in the input.
 	width  int              // Width of the last rune read.
-	tokens chan token.Token // Channel for lexed tokens
+	Tokens chan token.Token // Channel for lexed tokens
 }
 
 type stateFn func(*Lexer) stateFn
@@ -38,7 +38,7 @@ func (l *Lexer) run() {
 	for state := lex; state != nil; {
 		state = state(l)
 	}
-	close(l.tokens)
+	close(l.Tokens)
 }
 
 func (l *Lexer) read() string {
@@ -50,7 +50,7 @@ func (l *Lexer) unread() string {
 }
 
 func (l *Lexer) emit(t token.Type) {
-	l.tokens <- token.Token{
+	l.Tokens <- token.Token{
 		Type:    t,
 		Literal: l.read(),
 	}
@@ -87,7 +87,7 @@ func (l *Lexer) discard() {
 }
 
 func (l *Lexer) error(text string) stateFn {
-	l.tokens <- token.Token{
+	l.Tokens <- token.Token{
 		Type:    token.ILLEGAL,
 		Literal: fmt.Sprintf("Parse error: %s %.50q", text, l.read()),
 	}
@@ -168,7 +168,7 @@ func lexIdentifier(l *Lexer) stateFn {
 	for unicode.IsLetter(l.peek()) {
 		l.advance()
 	}
-	l.emit(token.Lookup(l.read()))
+	l.emit(token.LookupType(l.read()))
 	return lex
 }
 
