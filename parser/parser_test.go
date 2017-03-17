@@ -21,6 +21,7 @@ let foo = 1337;
 	lexer := lexer.New(input)
 	parser := New(lexer)
 	program := parser.Parse()
+	checkParserErrors(t, parser)
 
 	if program == nil {
 		t.Fatal("Parse() returned nil")
@@ -40,6 +41,50 @@ let foo = 1337;
 		stmt := program.Statements[x]
 		testLetStatement(t, stmt, test.name)
 	}
+}
+
+func TestReturnStatements(t *testing.T) {
+	input := `
+return 5;
+return 10;
+return 1337;
+`
+	lexer := lexer.New(input)
+	parser := New(lexer)
+	program := parser.Parse()
+	checkParserErrors(t, parser)
+
+	if len(program.Statements) != 3 {
+		t.Fatalf("Not enough statements, only got %d", len(program.Statements))
+	}
+
+	for _, stmt := range program.Statements {
+		cast, ok := stmt.(*ast.ReturnStatement)
+
+		if !ok {
+			t.Errorf("Wrong stmt type: %T", stmt)
+		}
+
+		if cast.TokenLiteral() != token.RETURN {
+			t.Errorf("Wrong literal, expecting %q, got %q", token.RETURN, cast.TokenLiteral())
+		}
+	}
+}
+
+func checkParserErrors(t *testing.T, p *Parser) {
+	errors := p.Errors()
+
+	if len(errors) == 0 {
+		return
+	}
+
+	t.Errorf("parser has %d errors", len(errors))
+
+	for _, msg := range errors {
+		t.Errorf("parser error: %q", msg)
+	}
+
+	t.FailNow()
 }
 
 func testLetStatement(t *testing.T, stmt ast.Statement, name string) {
