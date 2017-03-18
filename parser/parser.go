@@ -2,11 +2,43 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/nomad-software/script/ast"
 	"github.com/nomad-software/script/lexer"
 	"github.com/nomad-software/script/token"
 )
+
+const (
+	LOWEST      = iota
+	EQUALS      // ==
+	LESSGREATER // > or <
+	SUM         // +
+	PRODUCT     // *
+	PREFIX      // -X or !X
+	CALL        // myFunction(X)
+	INDEX       // array[index]
+)
+
+type prefixFn func() ast.Expression
+type infixFn func(ast.Expression) ast.Expression
+
+// New creates a new parser.
+func New(l *lexer.Lexer) *Parser {
+	p := &Parser{
+		lexer:     l,
+		errors:    []string{},
+		prefixFns: make(map[token.Type]prefixFn),
+		infixFns:  make(map[token.Type]infixFn),
+	}
+
+	p.registerPrefixFn(token.IDENT, p.parseIdentifier)
+	p.registerPrefixFn(token.INT, p.parseIntegerLiteral)
+
+	p.advance()
+	p.advance()
+	return p
+}
 
 // Parser is the parser itself.
 type Parser struct {
@@ -14,22 +46,13 @@ type Parser struct {
 	curToken  token.Token
 	nextToken token.Token
 	errors    []string
-}
-
-// New creates a new parser.
-func New(l *lexer.Lexer) *Parser {
-	p := &Parser{
-		lexer:  l,
-		errors: []string{},
-	}
-	p.advance()
-	p.advance()
-	return p
+	prefixFns map[token.Type]prefixFn
+	infixFns  map[token.Type]infixFn
 }
 
 // Parse the tokens from the lexer.
-func (p *Parser) Parse() *ast.Progam {
-	prg := &ast.Progam{}
+func (p *Parser) Parse() *ast.Program {
+	prg := &ast.Program{}
 	prg.Statements = []ast.Statement{}
 
 	for !p.curToken.IsType(token.EOF) {
@@ -45,6 +68,14 @@ func (p *Parser) Parse() *ast.Progam {
 // Errors return all parsing errors.
 func (p *Parser) Errors() []string {
 	return p.errors
+}
+
+func (p *Parser) registerPrefixFn(t token.Type, fn prefixFn) {
+	p.prefixFns[t] = fn
+}
+
+func (p *Parser) registerinfixFn(t token.Type, fn infixFn) {
+	p.infixFns[t] = fn
 }
 
 func (p *Parser) advance() {
@@ -73,7 +104,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -114,4 +145,55 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	}
 
 	return stmt
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{
+		Token: p.curToken,
+	}
+
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.nextToken.IsType(token.SEMICOLON) {
+		p.advance()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	fn := p.prefixFns[p.curToken.Type]
+
+	if fn == nil {
+		return nil
+	}
+
+	leftExp := fn()
+
+	return leftExp
+}
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{
+		Token: p.curToken,
+		Value: p.curToken.Literal,
+	}
+}
+
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{
+		Token: p.curToken,
+	}
+
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	lit.Value = value
+
+	return lit
 }
