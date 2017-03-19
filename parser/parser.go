@@ -6,18 +6,8 @@ import (
 
 	"github.com/nomad-software/script/ast"
 	"github.com/nomad-software/script/lexer"
+	"github.com/nomad-software/script/precedence"
 	"github.com/nomad-software/script/token"
-)
-
-const (
-	LOWEST      = iota
-	EQUALS      // ==
-	LESSGREATER // > or <
-	SUM         // +
-	PRODUCT     // *
-	PREFIX      // -X or !X
-	CALL        // myFunction(X)
-	INDEX       // array[index]
 )
 
 type prefixFn func() ast.Expression
@@ -36,6 +26,15 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefixFn(token.INT, p.parseIntegerLiteral)
 	p.registerPrefixFn(token.BANG, p.parsePrefixExpression)
 	p.registerPrefixFn(token.MINUS, p.parsePrefixExpression)
+
+	p.registerInfixFn(token.PLUS, p.parseInfixExpression)
+	p.registerInfixFn(token.MINUS, p.parseInfixExpression)
+	p.registerInfixFn(token.SLASH, p.parseInfixExpression)
+	p.registerInfixFn(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfixFn(token.EQUAL, p.parseInfixExpression)
+	p.registerInfixFn(token.NOT_EQUAL, p.parseInfixExpression)
+	p.registerInfixFn(token.LT, p.parseInfixExpression)
+	p.registerInfixFn(token.GT, p.parseInfixExpression)
 
 	p.advance()
 	p.advance()
@@ -80,7 +79,7 @@ func (p *Parser) registerPrefixFn(t token.Type, fn prefixFn) {
 	p.prefixFns[t] = fn
 }
 
-func (p *Parser) registerinfixFn(t token.Type, fn infixFn) {
+func (p *Parser) registerInfixFn(t token.Type, fn infixFn) {
 	p.infixFns[t] = fn
 }
 
@@ -153,7 +152,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 		Token: p.curToken,
 	}
 
-	stmt.Expression = p.parseExpression(LOWEST)
+	stmt.Expression = p.parseExpression(precedence.LOWEST)
 
 	if p.nextToken.IsType(token.SEMICOLON) {
 		p.advance()
@@ -162,15 +161,25 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
-func (p *Parser) parseExpression(precedence int) ast.Expression {
-	fn := p.prefixFns[p.curToken.Type]
-
-	if fn == nil {
+func (p *Parser) parseExpression(prec int) ast.Expression {
+	prefix := p.prefixFns[p.curToken.Type]
+	if prefix == nil {
 		p.addError("no prefix parse function for %s found", p.curToken.Type)
 		return nil
 	}
 
-	leftExp := fn()
+	leftExp := prefix()
+
+	for !p.nextToken.IsType(token.SEMICOLON) && prec < p.nextToken.Precedence() {
+		infix := p.infixFns[p.nextToken.Type]
+		if infix == nil {
+			return leftExp
+		}
+
+		p.advance()
+
+		leftExp = infix(leftExp)
+	}
 
 	return leftExp
 }
@@ -207,7 +216,21 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 
 	p.advance()
 
-	expression.Right = p.parseExpression(PREFIX)
+	expression.Right = p.parseExpression(precedence.PREFIX)
+
+	return expression
+}
+
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+
+	prec := p.curToken.Precedence()
+	p.advance()
+	expression.Right = p.parseExpression(prec)
 
 	return expression
 }
