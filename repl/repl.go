@@ -6,10 +6,7 @@ import (
 	"io"
 
 	"github.com/nomad-software/script/lexer"
-)
-
-const (
-	prompt = ">>> "
+	"github.com/nomad-software/script/parser"
 )
 
 // Start the REPL
@@ -17,7 +14,7 @@ func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 
 	for {
-		fmt.Printf(prompt)
+		fmt.Printf(">>> ")
 		scanned := scanner.Scan()
 
 		if !scanned {
@@ -25,10 +22,19 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
-		lexer := lexer.New(line)
+		l := lexer.New(line)
+		p := parser.New(l)
 
-		for tok := range lexer.Tokens {
-			fmt.Fprintf(out, "%s\n", tok)
+		program := p.Parse()
+
+		if len(p.Errors()) != 0 {
+			for _, msg := range p.Errors() {
+				io.WriteString(out, "\t"+msg+"\n")
+			}
+			continue
 		}
+
+		io.WriteString(out, program.String())
+		io.WriteString(out, "\n")
 	}
 }
