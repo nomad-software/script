@@ -20,8 +20,18 @@ func Eval(node ast.Node) object.Object {
 	case *ast.Program:
 		return evalProgram(node)
 
+	case *ast.BlockStatement:
+		return evalBlockStatement(node)
+
 	case *ast.ExpressionStatement:
 		return Eval(node.Expression)
+
+	case *ast.ReturnStatement:
+		val := Eval(node.Value)
+		// if isError(val) {
+		// 	return val
+		// }
+		return &object.ReturnValue{Value: val}
 
 	// Expressions
 	case *ast.IntegerLiteral:
@@ -49,6 +59,10 @@ func Eval(node ast.Node) object.Object {
 		// }
 
 		return evalInfixExpression(node.Operator, left, right)
+
+	case *ast.IfExpression:
+		return evalIfExpression(node)
+
 	}
 
 	return nil
@@ -63,6 +77,7 @@ func evalProgram(program *ast.Program) object.Object {
 		switch result := result.(type) {
 		case *object.ReturnValue:
 			return result.Value
+
 		case *object.Error:
 			return result
 		}
@@ -162,21 +177,53 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 }
 
 func evalTruth(obj object.Object) *object.Boolean {
-	switch obj.Type() {
-
-	case object.NULL_OBJ:
+	switch obj := obj.(type) {
+	case *object.Null:
 		return FALSE
 
-	case object.BOOLEAN_OBJ:
-		return obj.(*object.Boolean)
+	case *object.Boolean:
+		return obj
 
-	case object.INTEGER_OBJ:
-		if obj.(*object.Integer).Value != 0 {
+	case *object.Integer:
+		if obj.Value != 0 {
 			return TRUE
 		}
 		return FALSE
 
 	default:
-		return FALSE
+		return TRUE
+	}
+}
+
+func evalBlockStatement(block *ast.BlockStatement) object.Object {
+	var result object.Object
+
+	for _, statement := range block.Statements {
+		result = Eval(statement)
+
+		if result != nil {
+			if result.IsType(object.RETURN_VALUE_OBJ) || result.IsType(object.ERROR_OBJ) {
+				return result
+			}
+		}
+	}
+
+	return result
+}
+
+func evalIfExpression(ie *ast.IfExpression) object.Object {
+	condition := Eval(ie.Condition)
+	// if isError(condition) {
+	// 	return condition
+	// }
+
+	if evalTruth(condition).Value {
+		return Eval(ie.Consequence)
+
+	} else if ie.Alternative != nil {
+		return Eval(ie.Alternative)
+
+	} else {
+		return NULL
 	}
 }
