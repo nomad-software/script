@@ -3,6 +3,7 @@ package evaluator
 import (
 	"github.com/nomad-software/script/ast"
 	"github.com/nomad-software/script/object"
+	"github.com/nomad-software/script/token"
 )
 
 var (
@@ -27,10 +28,7 @@ func Eval(node ast.Node) object.Object {
 		return &object.Integer{Value: node.Value}
 
 	case *ast.Boolean:
-		if node.Value {
-			return TRUE
-		}
-		return FALSE
+		return nativeBoolToBooleanObject(node.Value)
 
 	case *ast.PrefixExpression:
 		right := Eval(node.Right)
@@ -39,6 +37,18 @@ func Eval(node ast.Node) object.Object {
 		// }
 		return evalPrefixExpression(node.Operator, right)
 
+	case *ast.InfixExpression:
+		left := Eval(node.Left)
+		// if isError(left) {
+		// 	return left
+		// }
+
+		right := Eval(node.Right)
+		// if isError(right) {
+		// 	return right
+		// }
+
+		return evalInfixExpression(node.Operator, left, right)
 	}
 
 	return nil
@@ -59,6 +69,13 @@ func evalProgram(program *ast.Program) object.Object {
 	}
 
 	return result
+}
+
+func nativeBoolToBooleanObject(input bool) *object.Boolean {
+	if input {
+		return TRUE
+	}
+	return FALSE
 }
 
 func evalPrefixExpression(operator string, right object.Object) object.Object {
@@ -100,4 +117,66 @@ func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 
 	value := right.(*object.Integer).Value
 	return &object.Integer{Value: -value}
+}
+
+func evalInfixExpression(operator string, left, right object.Object) object.Object {
+
+	if left.IsType(object.INTEGER_OBJ) && right.IsType(object.INTEGER_OBJ) {
+		return evalIntegerInfixExpression(operator, left, right)
+
+	} else if operator == token.EQUAL {
+		return nativeBoolToBooleanObject(evalTruth(left) == evalTruth(right))
+
+	} else if operator == token.NOT_EQUAL {
+		return nativeBoolToBooleanObject(evalTruth(left) != evalTruth(right))
+	}
+
+	return NULL
+}
+
+func evalIntegerInfixExpression(operator string, left, right object.Object) object.Object {
+	leftVal := left.(*object.Integer).Value
+	rightVal := right.(*object.Integer).Value
+
+	switch operator {
+	case token.PLUS:
+		return &object.Integer{Value: leftVal + rightVal}
+	case token.MINUS:
+		return &object.Integer{Value: leftVal - rightVal}
+	case token.ASTERISK:
+		return &object.Integer{Value: leftVal * rightVal}
+	case token.SLASH:
+		return &object.Integer{Value: leftVal / rightVal}
+	case token.LT:
+		return nativeBoolToBooleanObject(leftVal < rightVal)
+	case token.GT:
+		return nativeBoolToBooleanObject(leftVal > rightVal)
+	case token.EQUAL:
+		return nativeBoolToBooleanObject(leftVal == rightVal)
+	case token.NOT_EQUAL:
+		return nativeBoolToBooleanObject(leftVal != rightVal)
+	default:
+		return NULL
+		// 	return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+}
+
+func evalTruth(obj object.Object) *object.Boolean {
+	switch obj.Type() {
+
+	case object.NULL_OBJ:
+		return FALSE
+
+	case object.BOOLEAN_OBJ:
+		return obj.(*object.Boolean)
+
+	case object.INTEGER_OBJ:
+		if obj.(*object.Integer).Value != 0 {
+			return TRUE
+		}
+		return FALSE
+
+	default:
+		return FALSE
+	}
 }
