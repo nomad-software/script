@@ -1,6 +1,10 @@
 package evaluator
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/nomad-software/script/object"
+)
 
 func TestEvalIntegerExpression(t *testing.T) {
 	tests := []struct {
@@ -140,5 +144,83 @@ if (10 > 1) {
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
 		testIntegerObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestErrorHandling(t *testing.T) {
+	tests := []struct {
+		input           string
+		expectedMessage string
+	}{
+		{
+			"5 + true;",
+			"invalid operation: INTEGER + BOOLEAN",
+		},
+		{
+			"5 + true; 5;",
+			"invalid operation: INTEGER + BOOLEAN",
+		},
+		{
+			"-true",
+			"invalid operation: -BOOLEAN",
+		},
+		{
+			"true + false;",
+			"invalid operation: BOOLEAN + BOOLEAN",
+		},
+		// {
+		// 	"true + false + true + false;",
+		// 	"invalid operation: BOOLEAN + BOOLEAN",
+		// },
+		{
+			"5; true + false; 5",
+			"invalid operation: BOOLEAN + BOOLEAN",
+		},
+		// {
+		// 	`"Hello" - "World"`,
+		// 	"invalid operation: STRING - STRING",
+		// },
+		{
+			"if (10 > 1) { true + false; }",
+			"invalid operation: BOOLEAN + BOOLEAN",
+		},
+		{
+			`
+if (10 > 1) {
+  if (10 > 1) {
+    return true + false;
+  }
+
+  return 1;
+}
+`,
+			"invalid operation: BOOLEAN + BOOLEAN",
+		},
+		// {
+		// 	"foobar",
+		// 	"identifier not found: foobar",
+		// },
+		// {
+		// 	`{"name": "Monkey"}[fn(x) { x }];`,
+		// 	"unusable as hash key: FUNCTION",
+		// },
+		// {
+		// 	`999[1]`,
+		// 	"index operator not supported: INTEGER",
+		// },
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		errObj, ok := evaluated.(*object.Error)
+		if !ok {
+			t.Errorf("no error object returned. got=%T(%+v)", evaluated, evaluated)
+			continue
+		}
+
+		if errObj.Message != tt.expectedMessage {
+			t.Errorf("wrong error message. expected=%q, got=%q", tt.expectedMessage, errObj.Message)
+		}
 	}
 }
