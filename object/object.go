@@ -17,6 +17,7 @@ const (
 	BOOLEAN      = "BOOLEAN"
 	RETURN_VALUE = "RETURN_VALUE"
 	FUNCTION     = "FUNCTION"
+	STRING       = "STRING"
 )
 
 type Object interface {
@@ -89,3 +90,18 @@ func (f *Function) Inspect() string {
 
 	return out.String()
 }
+
+type String struct {
+	Value string
+}
+
+func (s *String) Type() Type             { return STRING }
+func (s *String) Inspect() string        { return s.Value }
+func (s *String) IsType(other Type) bool { return s.Type() == other }
+
+// func (s *String) HashKey() HashKey {
+// 	h := fnv.New64a()
+// 	h.Write([]byte(s.Value))
+
+// 	return HashKey{Type: s.Type(), Value: h.Sum64()}
+// }

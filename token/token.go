@@ -39,13 +39,19 @@ const (
 	SLASH     = "/"
 )
 
-// Special types
+// Data types
 const (
-	EOF       = "\uFFFF"
-	IDENT     = "identifier"
-	ILLEGAL   = "illegal"
-	INT       = "int"
-	SEMICOLON = ";"
+	INT    = "int"
+	STRING = "string"
+)
+
+// Miscellaneous
+const (
+	DOUBLE_QUOTE = "\""
+	EOF          = "\uFFFF"
+	IDENT        = "identifier"
+	ILLEGAL      = "illegal"
+	SEMICOLON    = ";"
 )
 
 // Token represents a unit of output from the lexer.

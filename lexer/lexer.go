@@ -130,6 +130,8 @@ func lex(l *Lexer) stateFn {
 			l.emit(token.SEMICOLON)
 		case token.SLASH:
 			l.emit(token.SLASH)
+		case token.DOUBLE_QUOTE:
+			return lexString
 		case token.EOF:
 			return lexEOF
 		default:
@@ -177,6 +179,17 @@ func lexNumber(l *Lexer) stateFn {
 		l.advance()
 	}
 	l.emit(token.INT)
+	return lex
+}
+
+func lexString(l *Lexer) stateFn {
+	l.discard()
+	for string(l.peek()) != token.DOUBLE_QUOTE {
+		l.advance()
+	}
+	l.emit(token.STRING)
+	l.advance()
+	l.discard()
 	return lex
 }
 
