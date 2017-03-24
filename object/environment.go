@@ -1,30 +1,30 @@
 package object
 
-func NewEnclosedEnvironment(outer *Environment) *Environment {
-	env := NewEnvironment()
-	env.outer = outer
+func NewChildEnv(parent *Env) *Env {
+	env := NewEnv()
+	env.parent = parent
 	return env
 }
 
-func NewEnvironment() *Environment {
+func NewEnv() *Env {
 	s := make(map[string]Object)
-	return &Environment{store: s, outer: nil}
+	return &Env{state: s, parent: nil}
 }
 
-type Environment struct {
-	store map[string]Object
-	outer *Environment
+type Env struct {
+	state  map[string]Object
+	parent *Env
 }
 
-func (e *Environment) Get(name string) (Object, bool) {
-	obj, ok := e.store[name]
-	if !ok && e.outer != nil {
-		obj, ok = e.outer.Get(name)
+func (e *Env) Get(name string) (Object, bool) {
+	obj, ok := e.state[name]
+	if !ok && e.parent != nil {
+		obj, ok = e.parent.Get(name)
 	}
 	return obj, ok
 }
 
-func (e *Environment) Set(name string, obj Object) Object {
-	e.store[name] = obj
+func (e *Env) Set(name string, obj Object) Object {
+	e.state[name] = obj
 	return obj
 }

@@ -12,7 +12,7 @@ func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.Parse()
-	env := object.NewEnvironment()
+	env := object.NewEnv()
 
 	return Eval(program, env)
 }

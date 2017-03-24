@@ -15,7 +15,7 @@ var (
 )
 
 // Eval evaluates the AST.
-func Eval(node ast.Node, env *object.Environment) object.Object {
+func Eval(node ast.Node, env *object.Env) object.Object {
 	switch node := node.(type) {
 
 	// Statements
@@ -75,12 +75,30 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.Identifier:
 		return evalIdentifier(node, env)
 
+	case *ast.FunctionLiteral:
+		params := node.Parameters
+		body := node.Body
+		return &object.Function{Parameters: params, Env: env, Body: body}
+
+	case *ast.CallExpression:
+		function := Eval(node.Function, env)
+		if isError(function) {
+			return function
+		}
+
+		args := evalExpressions(node.Arguments, env)
+		if len(args) == 1 && isError(args[0]) {
+			return args[0]
+		}
+
+		return applyFunction(function, args)
+
 	}
 
 	return nil
 }
 
-func evalProgram(program *ast.Program, env *object.Environment) object.Object {
+func evalProgram(program *ast.Program, env *object.Env) object.Object {
 	var result object.Object
 
 	for _, statement := range program.Statements {
@@ -137,7 +155,7 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 }
 
 func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
-	if !right.IsType(object.INTEGER_OBJ) {
+	if !right.IsType(object.INTEGER) {
 		return newError("invalid operation: -%s", right.Type())
 	}
 
@@ -147,7 +165,7 @@ func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
 
-	if left.IsType(object.INTEGER_OBJ) && right.IsType(object.INTEGER_OBJ) {
+	if left.IsType(object.INTEGER) && right.IsType(object.INTEGER) {
 		return evalIntegerInfixExpression(operator, left, right)
 
 	} else if operator == token.EQUAL {
@@ -205,14 +223,14 @@ func evalTruth(obj object.Object) *object.Boolean {
 	}
 }
 
-func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) object.Object {
+func evalBlockStatement(block *ast.BlockStatement, env *object.Env) object.Object {
 	var result object.Object
 
 	for _, statement := range block.Statements {
 		result = Eval(statement, env)
 
 		if result != nil {
-			if result.IsType(object.RETURN_VALUE_OBJ) || result.IsType(object.ERROR_OBJ) {
+			if result.IsType(object.RETURN_VALUE) || result.IsType(object.ERROR) {
 				return result
 			}
 		}
@@ -221,7 +239,7 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 	return result
 }
 
-func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
+func evalIfExpression(ie *ast.IfExpression, env *object.Env) object.Object {
 	condition := Eval(ie.Condition, env)
 	if isError(condition) {
 		return condition
@@ -244,12 +262,12 @@ func newError(format string, a ...interface{}) *object.Error {
 
 func isError(obj object.Object) bool {
 	if obj != nil {
-		return obj.IsType(object.ERROR_OBJ)
+		return obj.IsType(object.ERROR)
 	}
 	return false
 }
 
-func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
+func evalIdentifier(node *ast.Identifier, env *object.Env) object.Object {
 	if val, ok := env.Get(node.Value); ok {
 		return val
 	}
@@ -259,4 +277,44 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 	// }
 
 	return newError("identifier not found: " + node.Value)
+}
+
+func evalExpressions(exps []ast.Expression, env *object.Env) []object.Object {
+	var result []object.Object
+
+	for _, e := range exps {
+		evaluated := Eval(e, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated}
+		}
+		result = append(result, evaluated)
+	}
+
+	return result
+}
+
+func applyFunction(fn object.Object, args []object.Object) object.Object {
+	switch fn := fn.(type) {
+
+	case *object.Function:
+		env := object.NewChildEnv(fn.Env)
+
+		for i, param := range fn.Parameters {
+			env.Set(param.Value, args[i])
+		}
+
+		obj := Eval(fn.Body, env)
+
+		if r, ok := obj.(*object.ReturnValue); ok {
+			return r.Value
+		}
+
+		return obj
+
+	// case *object.Builtin:
+	// 	return fn.Fn(args...)
+
+	default:
+		return newError("not a function: %s", fn.Type())
+	}
 }
