@@ -290,9 +290,9 @@ func evalIdentifier(node *ast.Identifier, env *object.Env) object.Object {
 		return val
 	}
 
-	// if builtin, ok := builtins[node.Value]; ok {
-	// 	return builtin
-	// }
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
 
 	return newError("identifier not found: " + node.Value)
 }
@@ -329,8 +329,8 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 
 		return obj
 
-	// case *object.Builtin:
-	// 	return fn.Fn(args...)
+	case *object.Builtin:
+		return fn.Fn(args...)
 
 	default:
 		return newError("not a function: %s", fn.Type())

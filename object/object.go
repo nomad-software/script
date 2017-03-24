@@ -18,6 +18,7 @@ const (
 	RETURN_VALUE = "RETURN_VALUE"
 	FUNCTION     = "FUNCTION"
 	STRING       = "STRING"
+	BUILTIN      = "BUILTIN"
 )
 
 type Object interface {
@@ -105,3 +106,11 @@ func (s *String) IsType(other Type) bool { return s.Type() == other }
 
 // 	return HashKey{Type: s.Type(), Value: h.Sum64()}
 // }
+
+type Builtin struct {
+	Fn func(args ...Object) Object
+}
+
+func (b *Builtin) Type() Type             { return BUILTIN }
+func (b *Builtin) Inspect() string        { return "builtin function" }
+func (b *Builtin) IsType(other Type) bool { return b.Type() == other }
