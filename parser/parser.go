@@ -22,26 +22,28 @@ func New(l *lexer.Lexer) *Parser {
 		infixFns:  make(map[token.Type]infixFn),
 	}
 
-	p.registerPrefixFn(token.IDENT, p.parseIdentifier)
-	p.registerPrefixFn(token.INT, p.parseIntegerLiteral)
 	p.registerPrefixFn(token.BANG, p.parsePrefixExpression)
-	p.registerPrefixFn(token.MINUS, p.parsePrefixExpression)
-	p.registerPrefixFn(token.TRUE, p.parseBoolean)
 	p.registerPrefixFn(token.FALSE, p.parseBoolean)
-	p.registerPrefixFn(token.LPAREN, p.parseGroupedExpression)
-	p.registerPrefixFn(token.IF, p.parseIfExpression)
 	p.registerPrefixFn(token.FUNCTION, p.parseFunctionLiteral)
+	p.registerPrefixFn(token.IDENT, p.parseIdentifier)
+	p.registerPrefixFn(token.IF, p.parseIfExpression)
+	p.registerPrefixFn(token.INT, p.parseIntegerLiteral)
+	p.registerPrefixFn(token.LBRACKET, p.parseArrayLiteral)
+	p.registerPrefixFn(token.LPAREN, p.parseGroupedExpression)
+	p.registerPrefixFn(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefixFn(token.STRING, p.parseStringLiteral)
+	p.registerPrefixFn(token.TRUE, p.parseBoolean)
 
-	p.registerInfixFn(token.PLUS, p.parseInfixExpression)
-	p.registerInfixFn(token.MINUS, p.parseInfixExpression)
-	p.registerInfixFn(token.SLASH, p.parseInfixExpression)
 	p.registerInfixFn(token.ASTERISK, p.parseInfixExpression)
 	p.registerInfixFn(token.EQUAL, p.parseInfixExpression)
-	p.registerInfixFn(token.NOT_EQUAL, p.parseInfixExpression)
-	p.registerInfixFn(token.LT, p.parseInfixExpression)
 	p.registerInfixFn(token.GT, p.parseInfixExpression)
+	p.registerInfixFn(token.LBRACKET, p.parseIndexExpression)
 	p.registerInfixFn(token.LPAREN, p.parseCallExpression)
+	p.registerInfixFn(token.LT, p.parseInfixExpression)
+	p.registerInfixFn(token.MINUS, p.parseInfixExpression)
+	p.registerInfixFn(token.NOT_EQUAL, p.parseInfixExpression)
+	p.registerInfixFn(token.PLUS, p.parseInfixExpression)
+	p.registerInfixFn(token.SLASH, p.parseInfixExpression)
 
 	p.advance()
 	p.advance()
@@ -373,36 +375,33 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 }
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
-	exp := &ast.CallExpression{
-		Token:    p.curToken,
-		Function: function,
-	}
-	exp.Arguments = p.parseCallArguments()
+	exp := &ast.CallExpression{Token: p.curToken, Function: function}
+	exp.Arguments = p.parseExpressionList(token.RPAREN)
 	return exp
 }
 
-func (p *Parser) parseCallArguments() []ast.Expression {
-	args := []ast.Expression{}
+func (p *Parser) parseExpressionList(end token.Type) []ast.Expression {
+	list := []ast.Expression{}
 
-	if p.nextToken.IsType(token.RPAREN) {
+	if p.nextToken.IsType(end) {
 		p.advance()
-		return args
+		return list
 	}
 
 	p.advance()
-	args = append(args, p.parseExpression(precedence.LOWEST))
+	list = append(list, p.parseExpression(precedence.LOWEST))
 
 	for p.nextToken.IsType(token.COMMA) {
 		p.advance()
 		p.advance()
-		args = append(args, p.parseExpression(precedence.LOWEST))
+		list = append(list, p.parseExpression(precedence.LOWEST))
 	}
 
-	if !p.expect(token.RPAREN) {
+	if !p.expect(end) {
 		return nil
 	}
 
-	return args
+	return list
 }
 
 func (p *Parser) parseStringLiteral() ast.Expression {
@@ -410,4 +409,30 @@ func (p *Parser) parseStringLiteral() ast.Expression {
 		Token: p.curToken,
 		Value: p.curToken.Literal,
 	}
+}
+
+func (p *Parser) parseArrayLiteral() ast.Expression {
+	array := &ast.ArrayLiteral{
+		Token: p.curToken,
+	}
+
+	array.Elements = p.parseExpressionList(token.RBRACKET)
+
+	return array
+}
+
+func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+	exp := &ast.IndexExpression{
+		Token: p.curToken,
+		Left:  left,
+	}
+
+	p.advance()
+	exp.Index = p.parseExpression(precedence.LOWEST)
+
+	if !p.expect(token.RBRACKET) {
+		return nil
+	}
+
+	return exp
 }

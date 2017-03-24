@@ -114,6 +114,8 @@ func lex(l *Lexer) stateFn {
 			l.emit(token.GT)
 		case token.LBRACE:
 			l.emit(token.LBRACE)
+		case token.LBRACKET:
+			l.emit(token.LBRACKET)
 		case token.LPAREN:
 			l.emit(token.LPAREN)
 		case token.LT:
@@ -124,6 +126,8 @@ func lex(l *Lexer) stateFn {
 			l.emit(token.PLUS)
 		case token.RBRACE:
 			l.emit(token.RBRACE)
+		case token.RBRACKET:
+			l.emit(token.RBRACKET)
 		case token.RPAREN:
 			l.emit(token.RPAREN)
 		case token.SEMICOLON:

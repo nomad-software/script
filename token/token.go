@@ -37,6 +37,8 @@ const (
 	RBRACE    = "}"
 	RPAREN    = ")"
 	SLASH     = "/"
+	LBRACKET  = "["
+	RBRACKET  = "]"
 )
 
 // Data types
@@ -98,6 +100,7 @@ var precedences = map[Type]int{
 	ASTERISK:  precedence.PRODUCT,
 	SLASH:     precedence.PRODUCT,
 	LPAREN:    precedence.CALL,
+	LBRACKET:  precedence.INDEX,
 }
 
 // Precedence returns the precedence of a token's type.

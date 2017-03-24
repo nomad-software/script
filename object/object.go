@@ -19,6 +19,7 @@ const (
 	FUNCTION     = "FUNCTION"
 	STRING       = "STRING"
 	BUILTIN      = "BUILTIN"
+	ARRAY        = "ARRAY"
 )
 
 type Object interface {
@@ -114,3 +115,50 @@ type Builtin struct {
 func (b *Builtin) Type() Type             { return BUILTIN }
 func (b *Builtin) Inspect() string        { return "builtin function" }
 func (b *Builtin) IsType(other Type) bool { return b.Type() == other }
+
+type Array struct {
+	Elements []Object
+}
+
+func (ao *Array) Type() Type             { return ARRAY }
+func (ao *Array) IsType(other Type) bool { return ao.Type() == other }
+func (ao *Array) Inspect() string {
+	var out bytes.Buffer
+
+	elements := []string{}
+	for _, e := range ao.Elements {
+		elements = append(elements, e.Inspect())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(elements, ", "))
+	out.WriteString("]")
+
+	return out.String()
+}
+
+// type HashPair struct {
+// 	Key   Object
+// 	Value Object
+// }
+
+// type Hash struct {
+// 	Pairs map[HashKey]HashPair
+// }
+
+// func (h *Hash) Type() Type { return HASH }
+// func (h *Hash) Inspect() string {
+// 	var out bytes.Buffer
+
+// 	pairs := []string{}
+// 	for _, pair := range h.Pairs {
+// 		pairs = append(pairs, fmt.Sprintf("%s: %s",
+// 			pair.Key.Inspect(), pair.Value.Inspect()))
+// 	}
+
+// 	out.WriteString("{")
+// 	out.WriteString(strings.Join(pairs, ", "))
+// 	out.WriteString("}")
+
+// 	return out.String()
+// }

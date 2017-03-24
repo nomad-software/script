@@ -1,12 +1,14 @@
 package evaluator
 
 import (
+	"fmt"
 	"unicode/utf8"
 
 	"github.com/nomad-software/script/object"
 )
 
 var builtins = map[string]*object.Builtin{
+
 	"len": &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			if len(args) != 1 {
@@ -14,8 +16,8 @@ var builtins = map[string]*object.Builtin{
 			}
 
 			switch arg := args[0].(type) {
-			// case *object.Array:
-			// 	return &object.Integer{Value: int64(len(arg.Elements))}
+			case *object.Array:
+				return &object.Integer{Value: int64(len(arg.Elements))}
 			case *object.String:
 				return &object.Integer{
 					Value: int64(utf8.RuneCountInString(arg.Value)),
@@ -25,95 +27,122 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
-	// "puts": &object.Builtin{
-	// 	Fn: func(args ...object.Object) object.Object {
-	// 		for _, arg := range args {
-	// 			fmt.Println(arg.Inspect())
-	// 		}
 
-	// 		return NULL
-	// 	},
-	// },
-	// "first": &object.Builtin{
-	// 	Fn: func(args ...object.Object) object.Object {
-	// 		if len(args) != 1 {
-	// 			return newError("wrong number of arguments. got=%d, want=1",
-	// 				len(args))
-	// 		}
-	// 		if args[0].Type() != object.ARRAY_OBJ {
-	// 			return newError("argument to `first` must be ARRAY, got %s",
-	// 				args[0].Type())
-	// 		}
+	"print": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			for _, arg := range args {
+				fmt.Println(arg.Inspect())
+			}
+			return NULL
+		},
+	},
 
-	// 		arr := args[0].(*object.Array)
-	// 		if len(arr.Elements) > 0 {
-	// 			return arr.Elements[0]
-	// 		}
+	"first": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if !args[0].IsType(object.ARRAY) {
+				return newError("argument to `first` must be %s, got %s", object.ARRAY, args[0].Type())
+			}
 
-	// 		return NULL
-	// 	},
-	// },
-	// "last": &object.Builtin{
-	// 	Fn: func(args ...object.Object) object.Object {
-	// 		if len(args) != 1 {
-	// 			return newError("wrong number of arguments. got=%d, want=1",
-	// 				len(args))
-	// 		}
-	// 		if args[0].Type() != object.ARRAY_OBJ {
-	// 			return newError("argument to `last` must be ARRAY, got %s",
-	// 				args[0].Type())
-	// 		}
+			arr := args[0].(*object.Array)
+			if len(arr.Elements) > 0 {
+				return arr.Elements[0]
+			}
 
-	// 		arr := args[0].(*object.Array)
-	// 		length := len(arr.Elements)
-	// 		if length > 0 {
-	// 			return arr.Elements[length-1]
-	// 		}
+			return arr
+		},
+	},
 
-	// 		return NULL
-	// 	},
-	// },
-	// "rest": &object.Builtin{
-	// 	Fn: func(args ...object.Object) object.Object {
-	// 		if len(args) != 1 {
-	// 			return newError("wrong number of arguments. got=%d, want=1",
-	// 				len(args))
-	// 		}
-	// 		if args[0].Type() != object.ARRAY_OBJ {
-	// 			return newError("argument to `rest` must be ARRAY, got %s",
-	// 				args[0].Type())
-	// 		}
+	"last": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if !args[0].IsType(object.ARRAY) {
+				return newError("argument to `last` must be %s, got %s", object.ARRAY, args[0].Type())
+			}
 
-	// 		arr := args[0].(*object.Array)
-	// 		length := len(arr.Elements)
-	// 		if length > 0 {
-	// 			newElements := make([]object.Object, length-1, length-1)
-	// 			copy(newElements, arr.Elements[1:length])
-	// 			return &object.Array{Elements: newElements}
-	// 		}
+			arr := args[0].(*object.Array)
+			length := len(arr.Elements)
+			if length > 0 {
+				return arr.Elements[length-1]
+			}
 
-	// 		return NULL
-	// 	},
-	// },
-	// "push": &object.Builtin{
-	// 	Fn: func(args ...object.Object) object.Object {
-	// 		if len(args) != 2 {
-	// 			return newError("wrong number of arguments. got=%d, want=2",
-	// 				len(args))
-	// 		}
-	// 		if args[0].Type() != object.ARRAY_OBJ {
-	// 			return newError("argument to `push` must be ARRAY, got %s",
-	// 				args[0].Type())
-	// 		}
+			return arr
+		},
+	},
 
-	// 		arr := args[0].(*object.Array)
-	// 		length := len(arr.Elements)
+	"unshift": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+			if !args[0].IsType(object.ARRAY) {
+				return newError("argument to `unshift` must be ARRAY, got %s", args[0].Type())
+			}
 
-	// 		newElements := make([]object.Object, length+1, length+1)
-	// 		copy(newElements, arr.Elements)
-	// 		newElements[length] = args[1]
+			arr := args[0].(*object.Array)
+			arr.Elements = append([]object.Object{args[1]}, arr.Elements...)
 
-	// 		return &object.Array{Elements: newElements}
-	// 	},
-	// },
+			return arr
+		},
+	},
+
+	"shift": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if !args[0].IsType(object.ARRAY) {
+				return newError("argument to `shift` must be %s, got %s", object.ARRAY, args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			length := len(arr.Elements)
+
+			if length > 0 {
+				arr.Elements = arr.Elements[1:]
+			}
+
+			return arr
+		},
+	},
+
+	"push": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+			if !args[0].IsType(object.ARRAY) {
+				return newError("argument to `push` must be ARRAY, got %s", args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			arr.Elements = append(arr.Elements, args[1])
+
+			return arr
+		},
+	},
+
+	"pop": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if !args[0].IsType(object.ARRAY) {
+				return newError("argument to `pop` must be %s, got %s", object.ARRAY, args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			length := len(arr.Elements)
+
+			if length > 0 {
+				arr.Elements = arr.Elements[:length-1]
+			}
+
+			return arr
+		},
+	},
 }
